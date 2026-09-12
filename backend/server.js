@@ -254,9 +254,8 @@ app.get('/api/test', (req, res) => {
     dbStatus: dbStatus
   });
 });
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 http://localhost:${PORT}`);
-});
+module.exports = app;
