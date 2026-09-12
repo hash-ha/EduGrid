@@ -7,7 +7,7 @@ import TeacherPortal from "./TeacherPortal";
 import AdminDashboard from "./AdminDashboard";
 import ReportsModule from "./ReportsModule";
 
-const API = "http://localhost:5000/api";
+const API = import.meta.env.VITE_API_URL || "${API}";
 const roles = {
   super_admin: "Super Admin",
   school_admin: "School Admin",
@@ -1113,7 +1113,7 @@ function ReportsPage({ call, token }) {
     }
   }
   async function download(format) {
-    const response = await fetch(`http://localhost:5000/api${reportPath}?format=${format}`, { headers: { Authorization: `Bearer ${token}` } });
+const response = await fetch(`${API}${reportPath}?format=${format}`, {...
     const anchor = document.createElement("a");
     anchor.href = URL.createObjectURL(await response.blob());
     anchor.download = `${type}-report.${format}`;
@@ -1511,7 +1511,7 @@ function AdmissionApplicationForm({ close }) {
   const update = (key, value) => setForm({ ...form, [key]: value });
   async function submit(event) {
     event.preventDefault();
-    const response = await fetch("http://localhost:5000/api/admissions", {
+    const response = await fetch("${API}/admissions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -1790,7 +1790,7 @@ function Students({ data, query, setQuery, search, go, busy, canDelete = false }
   )?.token;
   async function updateStudent(payload) {
     const response = await fetch(
-      `http://localhost:5000/api/students/${profile._id}`,
+      `${API}/students/${profile._id}`,
       {
         method: "PUT",
         headers: {
@@ -1809,7 +1809,7 @@ function Students({ data, query, setQuery, search, go, busy, canDelete = false }
   }
   async function move(type) {
     const response = await fetch(
-      `http://localhost:5000/api/students/${profile._id}/${type}`,
+      `${API}/students/${profile._id}/${type}`,
       {
         method: "POST",
         headers: {
@@ -1838,7 +1838,7 @@ function Students({ data, query, setQuery, search, go, busy, canDelete = false }
     const body = new FormData();
     body.append("photo", event.target.files[0]);
     const response = await fetch(
-      `http://localhost:5000/api/students/${profile._id}/photo`,
+      `${API}/students/${profile._id}/photo`,
       { method: "POST", headers: { Authorization: `Bearer ${token}` }, body },
     );
     const result = await response.json();
@@ -1849,7 +1849,7 @@ function Students({ data, query, setQuery, search, go, busy, canDelete = false }
   }
   async function deleteCurrentStudent() {
     if (!window.confirm("Delete this student and their profile permanently?")) return;
-    const response = await fetch(`http://localhost:5000/api/students/${profile._id}`, {
+    const response = await fetch(`${API}/students/${profile._id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -2667,7 +2667,7 @@ function Academics({
   const [message, setMessage] = useState("");
   useEffect(() => {
     const session = JSON.parse(localStorage.getItem("schoolSession") || "null");
-    fetch("http://localhost:5000/api/staff", {
+    fetch("${API}/staff", {
       headers: { Authorization: `Bearer ${session?.token}` },
     })
       .then((response) => response.json())
@@ -2690,7 +2690,7 @@ function Academics({
     const values = sectionForm(item, section);
     const session = JSON.parse(localStorage.getItem("schoolSession") || "null");
     const response = await fetch(
-      `http://localhost:5000/api/academic/classes/${item._id}/sections/${section._id}`,
+      `${API}/academic/classes/${item._id}/sections/${section._id}`,
       {
         method: "PUT",
         headers: {
