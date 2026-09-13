@@ -211,9 +211,42 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(async () => { console.log('✅ MongoDB Connected Successfully!'); await ensureSeedAccounts(); await ensurePaidPortalAccounts(); console.log('✅ Seed accounts verified'); })
-  .catch((err) => console.error('❌ MongoDB Connection Error:', err));
+let dbInitPromise = null;
+
+async function initializeDatabase() {
+  if (!process.env.MONGODB_URI) {
+    console.warn('⚠️ MONGODB_URI is not set. Database features will be unavailable.');
+    return;
+  }
+
+  if (!dbInitPromise) {
+    dbInitPromise = mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+      socketTimeoutMS: 5000
+    })
+      .then(async () => {
+        console.log('✅ MongoDB Connected Successfully!');
+
+        const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+        if (!isServerless) {
+          await ensureSeedAccounts();
+          await ensurePaidPortalAccounts();
+          console.log('✅ Seed accounts verified');
+        } else {
+          console.log('ℹ️ Skipping seed sync in serverless environment to avoid cold start timeout.');
+        }
+      })
+      .catch((err) => {
+        console.error('❌ MongoDB Connection Error:', err.message);
+        return null;
+      });
+  }
+
+  return dbInitPromise;
+}
+
+initializeDatabase();
 
 // Routes
 app.use('/api/auth', authRoutes);
