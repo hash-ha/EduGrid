@@ -267,7 +267,7 @@ app.get('/api/test', (req, res) => {
     dbStatus: dbStatus
   });
 });
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && require.main === module) {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
