@@ -18,19 +18,20 @@ const HomePage = ({ API }) => {
       setLoading(true);
       setError(null);
 
-      // Fetch school info
-      const infoRes = await fetch(`${API}/public/school-info`);
-      const infoData = await infoRes.json();
+      const [infoRes, noticesRes, eventsRes] = await Promise.all([
+        fetch(`${API}/public/school-info`),
+        fetch(`${API}/public/notices?limit=3`),
+        fetch(`${API}/public/events`),
+      ]);
+
+      const [infoData, noticesData, eventsData] = await Promise.all([
+        infoRes.json(),
+        noticesRes.json(),
+        eventsRes.json(),
+      ]);
+
       if (infoData.success) setSchoolInfo(infoData.data);
-
-      // Fetch notices
-      const noticesRes = await fetch(`${API}/public/notices?limit=3`);
-      const noticesData = await noticesRes.json();
       if (noticesData.success) setNotices(noticesData.data);
-
-      // Fetch events
-      const eventsRes = await fetch(`${API}/public/events`);
-      const eventsData = await eventsRes.json();
       if (eventsData.success) setEvents(eventsData.data.slice(0, 3));
     } catch (err) {
       setError('Failed to load home page data');
