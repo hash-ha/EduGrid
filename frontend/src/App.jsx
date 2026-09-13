@@ -17,12 +17,12 @@ const roles = {
   parent: "Parent",
 };
 const demoAccounts = {
-  super_admin: "",
-  school_admin: "",
-  accountant: "",
-  teacher: "",
-  student: "",
-  parent: "",
+  super_admin: "superadmin@school.com",
+  school_admin: "admin@school.com",
+  accountant: "accountant@school.com",
+  teacher: "hassan.teacher@school.com",
+  student: "ali.hassan@student.com",
+  parent: "0300-1234567",
 };
 const classes = [
   "Play Group",
@@ -190,19 +190,50 @@ function App() {
   const [publicSite, setPublicSite] = useState(false);
   const [selectedLoginRole, setSelectedLoginRole] = useState(null);
   useEffect(() => {
-    if (session) {
-      loadStudents();
-      loadVouchers();
-      loadFeeStructures();
-      loadAttendance();
-      loadAcademicClasses();
-      if (session.user.role === "teacher") loadTeacherClasses();
-      loadStaff();
-      if (session.user.role !== "accountant") loadExams();
-      loadNotices();
-      if (["parent", "student"].includes(session.user.role)) loadPortal();
-    }
-  }, [session]);
+    if (!session?.token || !session?.user) return;
+
+    let cancelled = false;
+
+    const loadDashboardData = async () => {
+      const role = session.user.role;
+      const tasks = [];
+
+      if (["super_admin", "school_admin", "accountant"].includes(role)) {
+        tasks.push(loadStudents());
+        tasks.push(loadVouchers());
+        tasks.push(loadFeeStructures());
+        tasks.push(loadAcademicClasses());
+        tasks.push(loadStaff());
+        tasks.push(loadNotices());
+      }
+
+      if (["super_admin", "school_admin", "teacher"].includes(role)) {
+        tasks.push(loadExams());
+      }
+
+      if (["super_admin", "school_admin", "teacher"].includes(role)) {
+        tasks.push(loadAttendance());
+      }
+
+      if (role === "teacher") {
+        tasks.push(loadTeacherClasses());
+      }
+
+      if (["parent", "student"].includes(role)) {
+        tasks.push(loadPortal());
+        tasks.push(loadNotices());
+      }
+
+      if (cancelled) return;
+      await Promise.allSettled(tasks);
+    };
+
+    loadDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, session?.user?.role]);
   async function call(path, options = {}) {
     const headers = {
       Authorization: `Bearer ${session.token}`,
@@ -1385,7 +1416,7 @@ function PasswordChangePrompt({ user, onChange, onSkip, error }) {
 }
  
 function Login({ onLogin, busy, error, role, back, onPasswordChange }) {
-  const [email, setEmail] = useState(demoAccounts[role] || "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -1398,17 +1429,17 @@ function Login({ onLogin, busy, error, role, back, onPasswordChange }) {
     super_admin: 'Email',
     school_admin: 'Email',
     accountant: 'Email',
-    teacher: 'Name',
-    student: 'Admission Number',
-    parent: 'Parent Phone Number',
+    teacher: 'Email or Employee ID',
+    student: 'Admission Number or Email',
+    parent: 'Phone Number or Email',
   }[role] || 'Login identifier';
   const identifierPlaceholder = {
-    super_admin: '',
-    school_admin: '',
-    accountant: '',
-    teacher: '',
-    student: '',
-    parent: '',
+    super_admin: 'Enter email',
+    school_admin: 'Enter email',
+    accountant: 'Enter email',
+    teacher: 'Enter name.teacher@school.com',
+    student: 'Enter admission number or email',
+    parent: 'Enter phone number or email',
   }[role] || 'Enter credential';
   return (
     <main className="login-page">

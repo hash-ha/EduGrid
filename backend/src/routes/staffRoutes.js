@@ -8,6 +8,13 @@ const router = express.Router();
 const adminRoles = ['super_admin', 'school_admin'];
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (req, file, callback) => callback(null, /^image\/(jpeg|png|webp)$/.test(file.mimetype)) });
 
+function createTeacherEmail(name) {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) return undefined;
+  const firstName = cleanName.split(/\s+/)[0].toLowerCase().replace(/[^a-z]/g, '');
+  return firstName ? `${firstName}.teacher@school.com` : undefined;
+}
+
 function handleError(error, res) {
   if (error.code === 11000) return res.status(409).json({ message: 'Employee ID already exists' });
   if (error.name === 'ValidationError') return res.status(400).json({ message: error.message });
@@ -32,18 +39,24 @@ router.get('/', protect, async (req, res) => {
 
 router.post('/', protect, authorize(...adminRoles), async (req, res) => {
   try {
-    const data = await Staff.create(req.body);
+    const normalizedBody = {
+      ...req.body,
+      email: req.body.email || (req.body.category === 'Teacher' ? createTeacherEmail(req.body.name) : req.body.email),
+    };
+    const data = await Staff.create(normalizedBody);
     const role = data.category === 'Accountant' ? 'accountant' : data.category === 'Teacher' ? 'teacher' : null;
     if (role) {
-      const existing = await User.findOne({ $or: [{ employeeId: data.employeeId }, ...(data.email ? [{ email: data.email }] : [])] });
+      const teacherEmail = data.email || createTeacherEmail(data.name);
+      const existing = await User.findOne({ $or: [{ employeeId: data.employeeId }, ...(teacherEmail ? [{ email: teacherEmail }] : [])] });
       if (!existing) {
-        await User.create({ name: data.name, email: data.email || undefined, employeeId: data.employeeId, password: '123456', role, phone: data.phone, mustChangePassword: true });
+        await User.create({ name: data.name, email: teacherEmail, employeeId: data.employeeId, password: '123456', role, phone: data.phone, status: 'Active', mustChangePassword: true });
       } else {
         existing.name = data.name;
-        existing.email = data.email || existing.email;
+        existing.email = teacherEmail || existing.email;
         existing.employeeId = data.employeeId;
         existing.role = role;
         existing.phone = data.phone;
+        existing.status = existing.status || 'Active';
         await existing.save();
       }
     }

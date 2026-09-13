@@ -161,9 +161,9 @@ router.get('/faculty', async (req, res) => {
       else grouped.Support.push(member);
     });
 
-    if (grouped.Principal.length === 0) grouped.Principal = DEFAULT_FACULTY.Principal;
-    if (grouped.Teachers.length === 0) grouped.Teachers = DEFAULT_FACULTY.Teachers;
-    if (grouped.Support.length === 0) grouped.Support = DEFAULT_FACULTY.Support;
+    if (faculty.length === 0) {
+      return res.json({ success: true, data: { Principal: [], Teachers: [], Support: [] }, total: 0 });
+    }
 
     res.json({ success: true, data: grouped, total: grouped.Principal.length + grouped.Teachers.length + grouped.Support.length });
   } catch (error) {

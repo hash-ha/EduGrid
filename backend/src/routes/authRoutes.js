@@ -6,6 +6,15 @@ const ParentRegistration = require('../models/ParentRegistration');
 const { protect, authorize } = require('../middleware/auth');
 const router = express.Router();
 
+const standardTeacherEmail = (name) => {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) return null;
+  const firstName = cleanName.split(/\s+/)[0].toLowerCase().replace(/[^a-z]/g, '');
+  return firstName ? `${firstName}.teacher@school.com` : null;
+};
+
+const isValidTeacherLoginEmail = (value) => /^([a-z]+)\.teacher@school\.com$/i.test(String(value || '').trim());
+
 const publicUser = (user) => ({
   id: user._id,
   name: user.name,
@@ -18,7 +27,8 @@ const publicUser = (user) => ({
   mustChangePassword: user.mustChangePassword,
   isApproved: user.isApproved,
   lastLoginAt: user.lastLoginAt,
-  loginCount: user.loginCount
+  loginCount: user.loginCount,
+  status: user.status || 'Active'
 });
 
 const createToken = (user) => jwt.sign(
@@ -80,6 +90,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Login identifier and password are required' });
     }
 
+    if (role === 'teacher' && loginIdentifier.includes('@') && !isValidTeacherLoginEmail(loginIdentifier)) {
+      return res.status(401).json({ message: 'Teacher email must be in the format name.teacher@school.com' });
+    }
+
     const normalized = loginIdentifier.toLowerCase();
     const roleFilter = ['super_admin', 'school_admin', 'accountant', 'teacher', 'student', 'parent'].includes(role)
       ? { role }
@@ -94,6 +108,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     if (user.isApproved === false) return res.status(403).json({ message: 'This account is awaiting admin approval' });
+    if (user.status && user.status !== 'Active') return res.status(403).json({ message: 'This account is inactive. Please contact the school admin.' });
 
     // Check password
     const isMatch = await user.comparePassword(password);

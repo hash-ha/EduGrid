@@ -28,6 +28,13 @@ const User = require('./src/models/User');
 const Student = require('./src/models/Student');
 const FeeVoucher = require('./src/models/FeeVoucher');
 
+function createTeacherEmail(name) {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) return undefined;
+  const firstName = cleanName.split(/\s+/)[0].toLowerCase().replace(/[^a-z]/g, '');
+  return firstName ? `${firstName}.teacher@school.com` : undefined;
+}
+
 async function ensureSeedAccounts() {
   const accounts = [
     { name: 'Super Admin', email: 'superadmin@school.com', role: 'super_admin', password: '123456' },
@@ -45,6 +52,7 @@ async function ensureSeedAccounts() {
           password: account.password,
           phone: account.phone || undefined,
           isApproved: true,
+          status: 'Active',
           mustChangePassword: false
         }
       },
@@ -55,12 +63,13 @@ async function ensureSeedAccounts() {
   }
 
   const teacherSeed = [
-    { name: 'Hassan Raza', email: 'hassan.teacher@school.com', employeeId: 'TCH-001', password: '123456', role: 'teacher', phone: '0301-2223344' },
-    { name: 'Sana Ahmed', email: 'sana.teacher@school.com', employeeId: 'TCH-002', password: '123456', role: 'teacher', phone: '0302-3334455' },
-    { name: 'Bilal Javed', email: 'bilal.teacher@school.com', employeeId: 'TCH-003', password: '123456', role: 'teacher', phone: '0303-4445566' },
-    { name: 'Maria Sadiq', email: 'maria.teacher@school.com', employeeId: 'TCH-004', password: '123456', role: 'teacher', phone: '0304-5556677' },
-    { name: 'Usman Farooq', email: 'usman.teacher@school.com', employeeId: 'TCH-005', password: '123456', role: 'teacher', phone: '0305-6667788' },
-    { name: 'Zoya Khan', email: 'zoya.teacher@school.com', employeeId: 'TCH-006', password: '123456', role: 'teacher', phone: '0306-7778899' }
+    { name: 'Hassan Raza', email: createTeacherEmail('Hassan Raza'), employeeId: 'TCH-001', password: '123456', role: 'teacher', phone: '0301-2223344' },
+    { name: 'Sana Ahmed', email: createTeacherEmail('Sana Ahmed'), employeeId: 'TCH-002', password: '123456', role: 'teacher', phone: '0302-3334455' },
+    { name: 'Bilal Javed', email: createTeacherEmail('Bilal Javed'), employeeId: 'TCH-003', password: '123456', role: 'teacher', phone: '0303-4445566' },
+    { name: 'Maria Sadiq', email: createTeacherEmail('Maria Sadiq'), employeeId: 'TCH-004', password: '123456', role: 'teacher', phone: '0304-5556677' },
+    { name: 'Usman Farooq', email: createTeacherEmail('Usman Farooq'), employeeId: 'TCH-005', password: '123456', role: 'teacher', phone: '0305-6667788' },
+    { name: 'Zoya Khan', email: createTeacherEmail('Zoya Khan'), employeeId: 'TCH-006', password: '123456', role: 'teacher', phone: '0306-7778899' },
+    { name: 'Mustafa Ali', email: createTeacherEmail('Mustafa Ali'), employeeId: 'TCH-007', password: '123456', role: 'teacher', phone: '0307-8889900' }
   ];
 
   for (const teacher of teacherSeed) {
@@ -75,6 +84,7 @@ async function ensureSeedAccounts() {
           role: teacher.role,
           phone: teacher.phone,
           isApproved: true,
+          status: 'Active',
           mustChangePassword: true
         }
       },
@@ -93,7 +103,6 @@ async function ensureSeedAccounts() {
     { name: 'Hiba Iqbal', email: 'hiba.iqbal@student.com', admissionNo: '2026-008', password: '123456', role: 'student', phone: '0305-1000008' }
   ];
 
-  const linkedStudentIds = [];
   for (const student of studentSeed) {
     const createdStudent = await User.findOneAndUpdate(
       { $or: [{ email: student.email }, { admissionNo: student.admissionNo }] },
@@ -106,6 +115,7 @@ async function ensureSeedAccounts() {
           role: student.role,
           phone: student.phone,
           isApproved: true,
+          status: 'Active',
           mustChangePassword: true
         }
       },
@@ -117,8 +127,6 @@ async function ensureSeedAccounts() {
       createdStudent.linkedStudents = [...(createdStudent.linkedStudents || []), dbStudent._id];
       await createdStudent.save();
     }
-
-    linkedStudentIds.push(dbStudent?._id).filter(Boolean);
   }
 
   const parentStudentIds = (await Student.find({ admissionNo: { $in: ['2026-001', '2026-002'] } }).select('_id')).map((s) => s._id);
@@ -132,6 +140,7 @@ async function ensureSeedAccounts() {
         role: 'parent',
         linkedStudents: parentStudentIds,
         isApproved: true,
+        status: 'Active',
         mustChangePassword: true
       },
       $setOnInsert: {
@@ -143,7 +152,11 @@ async function ensureSeedAccounts() {
 }
 
 async function ensurePaidPortalAccounts() {
-  const paidVouchers = await FeeVoucher.find({ status: 'Paid', paidAmount: { $gte: 0 } }).populate('student');
+  const paidVouchers = await FeeVoucher.find({ status: 'Paid' })
+    .sort({ updatedAt: -1 })
+    .limit(100)
+    .populate('student');
+
   for (const voucher of paidVouchers) {
     const student = voucher.student;
     if (!student?.admissionNo) continue;
@@ -189,7 +202,7 @@ async function ensurePaidPortalAccounts() {
       await parentUser.save();
     }
   }
-  console.log(`✅ Paid portal accounts verified for ${paidVouchers.length} voucher(s)`);
+  console.log(`✅ Paid portal accounts verified for ${paidVouchers.length} recent voucher(s)`);
 }
 
 // Middleware

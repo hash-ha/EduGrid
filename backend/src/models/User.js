@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema({
   phone: { type: String },
   address: { type: String },
   isApproved: { type: Boolean, default: true },
+  status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
   mustChangePassword: { type: Boolean, default: false },
   lastLoginAt: { type: Date, default: null },
   loginCount: { type: Number, default: 0 },
